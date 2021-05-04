@@ -59,6 +59,7 @@
 #include "InstanceSaveMgr.h"
 #include "IPLocation.h"
 #include "Language.h"
+#include "LanguageMgr.h"
 #include "LFGMgr.h"
 #include "Log.h"
 #include "LootItemStorage.h"
@@ -1781,6 +1782,12 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Loading Spell Totem models...");
     sSpellMgr->LoadSpellTotemModel();
+
+    TC_LOG_INFO("server.loading", "Loading languages...");  // must be after LoadSpellInfoStore and LoadSkillLineAbilityMap
+    sLanguageMgr->LoadLanguages();
+
+    TC_LOG_INFO("server.loading", "Loading languages words...");
+    sLanguageMgr->LoadLanguagesWords();
 
     TC_LOG_INFO("server.loading", "Loading GameObject models...");
     LoadGameObjectModelList(m_dataPath);
