@@ -42,6 +42,7 @@
 #include "CharacterPackets.h"
 #include "Chat.h"
 #include "ChatPackets.h"
+#include "ChatTextBuilder.h"
 #include "CinematicMgr.h"
 #include "CombatLogPackets.h"
 #include "CombatPackets.h"
@@ -72,7 +73,7 @@
 #include "InstanceScript.h"
 #include "ItemPackets.h"
 #include "KillRewarder.h"
-#include "Language.h"
+#include "LanguageMgr.h"
 #include "LFGMgr.h"
 #include "Log.h"
 #include "LootItemStorage.h"
@@ -6094,7 +6095,8 @@ void Player::SendMessageToSetInRange(WorldPacket const* data, float dist, bool s
     if (self)
         SendDirectMessage(data);
 
-    Trinity::MessageDistDeliverer notifier(this, data, dist);
+    Trinity::PacketSenderRef sender(data);
+    Trinity::MessageDistDeliverer<Trinity::PacketSenderRef> notifier(this, sender, dist);
     Cell::VisitWorldObjects(this, notifier, dist);
 }
 
@@ -6103,7 +6105,8 @@ void Player::SendMessageToSetInRange(WorldPacket const* data, float dist, bool s
     if (self)
         SendDirectMessage(data);
 
-    Trinity::MessageDistDeliverer notifier(this, data, dist, own_team_only);
+    Trinity::PacketSenderRef sender(data);
+    Trinity::MessageDistDeliverer<Trinity::PacketSenderRef> notifier(this, sender, dist, own_team_only);
     Cell::VisitWorldObjects(this, notifier, dist);
 }
 
@@ -6114,7 +6117,8 @@ void Player::SendMessageToSet(WorldPacket const* data, Player const* skipped_rcv
 
     // we use World::GetMaxVisibleDistance() because i cannot see why not use a distance
     // update: replaced by GetMap()->GetVisibilityDistance()
-    Trinity::MessageDistDeliverer notifier(this, data, GetVisibilityRange(), false, skipped_rcvr);
+    Trinity::PacketSenderRef sender(data);
+    Trinity::MessageDistDeliverer<Trinity::PacketSenderRef> notifier(this, sender, GetVisibilityRange(), false, skipped_rcvr);
     Cell::VisitWorldObjects(this, notifier, GetVisibilityRange());
 }
 
@@ -16406,29 +16410,27 @@ QuestGiverStatus Player::GetQuestDialogStatus(Object* questgiver)
 
     switch (questgiver->GetTypeId())
     {
-    case TYPEID_GAMEOBJECT:
-    {
-        QuestGiverStatus questStatus = questgiver->ToGameObject()->AI()->GetDialogStatus(this);
-        if (questStatus != QuestGiverStatus::ScriptedDefault)
-            return questStatus;
-        qr = sObjectMgr->GetGOQuestRelationBounds(questgiver->GetEntry());
-        qir = sObjectMgr->GetGOQuestInvolvedRelationBounds(questgiver->GetEntry());
-        break;
-    }
-    case TYPEID_UNIT:
-    {
-        QuestGiverStatus questStatus = questgiver->ToCreature()->AI()->GetDialogStatus(this);
-        if (questStatus != QuestGiverStatus::ScriptedDefault)
-            return questStatus;
-        qr = sObjectMgr->GetCreatureQuestRelationBounds(questgiver->GetEntry());
-        qir = sObjectMgr->GetCreatureQuestInvolvedRelationBounds(questgiver->GetEntry());
-        break;
-    }
-    default:
-        // it's impossible, but check
-        TC_LOG_ERROR("entities.player.quest", "Player::GetQuestDialogStatus: Called with unexpected type (Entry: %u, Type: %u) by player '%s' (%s)",
-            questgiver->GetEntry(), questgiver->GetTypeId(), GetName().c_str(), GetGUID().ToString().c_str());
-        return QuestGiverStatus::None;
+        case TYPEID_GAMEOBJECT:
+        {
+            if (Optional<QuestGiverStatus> questStatus = questgiver->ToGameObject()->AI()->GetDialogStatus(this))
+                return *questStatus;
+            qr = sObjectMgr->GetGOQuestRelationBounds(questgiver->GetEntry());
+            qir = sObjectMgr->GetGOQuestInvolvedRelationBounds(questgiver->GetEntry());
+            break;
+        }
+        case TYPEID_UNIT:
+        {
+            if (Optional<QuestGiverStatus> questStatus = questgiver->ToCreature()->AI()->GetDialogStatus(this))
+                return *questStatus;
+            qr = sObjectMgr->GetCreatureQuestRelationBounds(questgiver->GetEntry());
+            qir = sObjectMgr->GetCreatureQuestInvolvedRelationBounds(questgiver->GetEntry());
+            break;
+        }
+        default:
+            // it's impossible, but check
+            TC_LOG_ERROR("entities.player.quest", "Player::GetQuestDialogStatus: Called with unexpected type (Entry: %u, Type: %u) by player '%s' (%s)",
+                questgiver->GetEntry(), questgiver->GetTypeId(), GetName().c_str(), GetGUID().ToString().c_str());
+            return QuestGiverStatus::None;
     }
 
     QuestGiverStatus result = QuestGiverStatus::None;
@@ -21965,9 +21967,20 @@ void Player::Say(std::string const& text, Language language, WorldObject const* 
     std::string _text(text);
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_SAY, language, _text);
 
-    WorldPackets::Chat::Chat packet;
-    packet.Initialize(CHAT_MSG_SAY, language, this, this, _text);
-    SendMessageToSetInRange(packet.Write(), sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true);
+    SendChatMessageToSetInRange(CHAT_MSG_SAY, language, std::move(_text), sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY));
+}
+
+void Player::SendChatMessageToSetInRange(ChatMsg chatMsg, Language language, std::string&& text, float range)
+{
+    Trinity::CustomChatTextBuilder builder(this, chatMsg, std::move(text), language, this);
+    Trinity::LocalizedDo<Trinity::CustomChatTextBuilder> localizer(builder);
+
+    // Send to self
+    localizer(this);
+
+    // Send to players
+    Trinity::MessageDistDeliverer<Trinity::LocalizedDo<Trinity::CustomChatTextBuilder>> notifier(this, localizer, range);
+    Cell::VisitWorldObjects(this, notifier, range);
 }
 
 void Player::Say(uint32 textId, WorldObject const* target /*= nullptr*/)
@@ -21980,9 +21993,7 @@ void Player::Yell(std::string const& text, Language language, WorldObject const*
     std::string _text(text);
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_YELL, language, _text);
 
-    WorldPackets::Chat::Chat packet;
-    packet.Initialize(CHAT_MSG_YELL, language, this, this, _text);
-    SendMessageToSetInRange(packet.Write(), sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_YELL), true);
+    SendChatMessageToSetInRange(CHAT_MSG_YELL, language, std::move(_text), sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_YELL));
 }
 
 void Player::Yell(uint32 textId, WorldObject const* target /*= nullptr*/)
@@ -22031,14 +22042,14 @@ void Player::Whisper(std::string const& text, Language language, Player* target,
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_WHISPER, language, _text, target);
 
     WorldPackets::Chat::Chat packet;
-    packet.Initialize(CHAT_MSG_WHISPER, Language(language), this, this, _text);
+    packet.Initialize(CHAT_MSG_WHISPER, language, this, this, _text);
     target->SendDirectMessage(packet.Write());
 
     // rest stuff shouldn't happen in case of addon message
     if (isAddonMessage)
         return;
 
-    packet.Initialize(CHAT_MSG_WHISPER_INFORM, Language(language), target, target, _text);
+    packet.Initialize(CHAT_MSG_WHISPER_INFORM, language, target, target, _text);
     SendDirectMessage(packet.Write());
 
     if (!isAcceptWhispers() && !IsGameMaster() && !target->IsGameMaster())
@@ -22070,6 +22081,21 @@ void Player::Whisper(uint32 textId, Player* target, bool /*isBossWhisper = false
     WorldPackets::Chat::Chat packet;
     packet.Initialize(CHAT_MSG_WHISPER, LANG_UNIVERSAL, this, target, DB2Manager::GetBroadcastTextValue(bct, locale, getGender()));
     target->SendDirectMessage(packet.Write());
+}
+
+bool Player::CanUnderstandLanguage(Language language) const
+{
+    if (IsGameMaster())
+        return true;
+
+    for (std::pair<uint32 const, LanguageDesc> const& languageDesc : sLanguageMgr->GetLanguageDescById(language))
+        if (languageDesc.second.SkillId && HasSkill(languageDesc.second.SkillId))
+            return true;
+
+    if (HasAuraTypeWithMiscvalue(SPELL_AURA_COMPREHEND_LANGUAGE, language))
+        return true;
+
+    return false;
 }
 
 Item* Player::GetMItem(ObjectGuid::LowType id)
