@@ -214,7 +214,7 @@ void BattlegroundAB::StartingEventOpenDoors()
     DoorOpen(BG_AB_OBJECT_GATE_H);
 
     // Achievement: Let's Get This Done
-    StartCriteriaTimer(CRITERIA_TIMED_TYPE_EVENT, AB_EVENT_START_BATTLE);
+    StartCriteriaTimer(CriteriaStartEvent::SendEvent, AB_EVENT_START_BATTLE);
 }
 
 void BattlegroundAB::AddPlayer(Player* player)
@@ -683,10 +683,10 @@ bool BattlegroundAB::UpdatePlayerScore(Player* player, uint32 type, uint32 value
     switch (type)
     {
         case SCORE_BASES_ASSAULTED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AB_OBJECTIVE_ASSAULT_BASE);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AB_OBJECTIVE_ASSAULT_BASE);
             break;
         case SCORE_BASES_DEFENDED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AB_OBJECTIVE_DEFEND_BASE);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AB_OBJECTIVE_DEFEND_BASE);
             break;
         default:
             break;

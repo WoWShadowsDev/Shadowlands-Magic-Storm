@@ -299,11 +299,9 @@ Creature* BattlegroundAV::AddAVCreature(uint16 cinfoid, uint16 type)
     if (creature->GetEntry() == BG_AV_CreatureInfo[AV_NPC_A_CAPTAIN] || creature->GetEntry() == BG_AV_CreatureInfo[AV_NPC_H_CAPTAIN])
         creature->SetRespawnDelay(RESPAWN_ONE_DAY); /// @todo look if this can be done by database + also add this for the wingcommanders
 
-    if ((isStatic && cinfoid >= 10 && cinfoid <= 14) || (!isStatic && ((cinfoid >= AV_NPC_A_GRAVEDEFENSE0 && cinfoid <= AV_NPC_A_GRAVEDEFENSE3) ||
-        (cinfoid >= AV_NPC_H_GRAVEDEFENSE0 && cinfoid <= AV_NPC_H_GRAVEDEFENSE3))))
+    if ((isStatic && cinfoid >= 10 && cinfoid <= 14) || (!isStatic && (cinfoid <= AV_NPC_A_GRAVEDEFENSE3 || (cinfoid >= AV_NPC_H_GRAVEDEFENSE0 && cinfoid <= AV_NPC_H_GRAVEDEFENSE3))))
     {
-        if (!isStatic && ((cinfoid >= AV_NPC_A_GRAVEDEFENSE0 && cinfoid <= AV_NPC_A_GRAVEDEFENSE3)
-            || (cinfoid >= AV_NPC_H_GRAVEDEFENSE0 && cinfoid <= AV_NPC_H_GRAVEDEFENSE3)))
+        if (!isStatic && (cinfoid <= AV_NPC_A_GRAVEDEFENSE3 || (cinfoid >= AV_NPC_H_GRAVEDEFENSE0 && cinfoid <= AV_NPC_H_GRAVEDEFENSE3)))
         {
             CreatureData &data = sObjectMgr->NewOrExistCreatureData(creature->GetSpawnId());
             data.spawnGroupData = sObjectMgr->GetDefaultSpawnGroup();
@@ -433,7 +431,7 @@ void BattlegroundAV::StartingEventOpenDoors()
     DoorOpen(BG_AV_OBJECT_DOOR_A);
 
     // Achievement: The Alterac Blitz
-    StartCriteriaTimer(CRITERIA_TIMED_TYPE_EVENT, BG_AV_EVENT_START_BATTLE);
+    StartCriteriaTimer(CriteriaStartEvent::SendEvent, BG_AV_EVENT_START_BATTLE);
 }
 
 void BattlegroundAV::AddPlayer(Player* player)
@@ -539,16 +537,16 @@ bool BattlegroundAV::UpdatePlayerScore(Player* player, uint32 type, uint32 value
     switch (type)
     {
         case SCORE_GRAVEYARDS_ASSAULTED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AV_OBJECTIVE_ASSAULT_GRAVEYARD);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AV_OBJECTIVE_ASSAULT_GRAVEYARD);
             break;
         case SCORE_GRAVEYARDS_DEFENDED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AV_OBJECTIVE_DEFEND_GRAVEYARD);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AV_OBJECTIVE_DEFEND_GRAVEYARD);
             break;
         case SCORE_TOWERS_ASSAULTED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AV_OBJECTIVE_ASSAULT_TOWER);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AV_OBJECTIVE_ASSAULT_TOWER);
             break;
         case SCORE_TOWERS_DEFENDED:
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, AV_OBJECTIVE_DEFEND_TOWER);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, AV_OBJECTIVE_DEFEND_TOWER);
             break;
         default:
             break;

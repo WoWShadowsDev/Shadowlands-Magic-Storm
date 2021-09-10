@@ -169,7 +169,8 @@ bool Group::Create(Player* leader)
 
         Group::ConvertLeaderInstancesToGroup(leader, this, false);
 
-        ASSERT(AddMember(leader)); // If the leader can't be added to a new group because it appears full, something is clearly wrong.
+        bool addMemberResult = AddMember(leader);
+        ASSERT(addMemberResult); // If the leader can't be added to a new group because it appears full, something is clearly wrong.
     }
     else if (!AddMember(leader))
         return false;
@@ -1257,7 +1258,7 @@ void Group::CountTheRoll(Rolls::iterator rollI, Map* allowedMap)
 
                 if (player && player->GetSession())
                 {
-                    player->UpdateCriteria(CRITERIA_TYPE_ROLL_NEED_ON_LOOT, roll->itemid, maxresul);
+                    player->UpdateCriteria(CriteriaType::RollNeed, roll->itemid, maxresul);
 
                     ItemPosCountVec dest;
                     LootItem* item = &(roll->itemSlot >= roll->getLoot()->items.size() ? roll->getLoot()->quest_items[roll->itemSlot - roll->getLoot()->items.size()] : roll->getLoot()->items[roll->itemSlot]);
@@ -1321,7 +1322,7 @@ void Group::CountTheRoll(Rolls::iterator rollI, Map* allowedMap)
 
                 if (player && player->GetSession())
                 {
-                    player->UpdateCriteria(CRITERIA_TYPE_ROLL_GREED_ON_LOOT, roll->itemid, maxresul);
+                    player->UpdateCriteria(CriteriaType::RollGreed, roll->itemid, maxresul);
 
                     LootItem* item = &(roll->itemSlot >= roll->getLoot()->items.size() ? roll->getLoot()->quest_items[roll->itemSlot - roll->getLoot()->items.size()] : roll->getLoot()->items[roll->itemSlot]);
 
@@ -1348,7 +1349,7 @@ void Group::CountTheRoll(Rolls::iterator rollI, Map* allowedMap)
                         item->is_looted = true;
                         roll->getLoot()->NotifyItemRemoved(roll->itemSlot);
                         roll->getLoot()->unlootedCount--;
-                        player->UpdateCriteria(CRITERIA_TYPE_CAST_SPELL, 13262); // Disenchant
+                        player->UpdateCriteria(CriteriaType::CastSpell, 13262); // Disenchant
 
                         ItemDisenchantLootEntry const* disenchant = ASSERT_NOTNULL(roll->GetItemDisenchantLoot(player));
 

@@ -165,13 +165,19 @@ namespace WorldPackets
         struct GarrisonEventEntry
         {
             int32 EntryID = 0;
-            int32 EventValue = 0;
+            int64 EventValue = 0;
         };
 
         struct GarrisonEventList
         {
             int32 Type = 0;
             std::vector<GarrisonEventEntry> Events;
+        };
+
+        struct GarrisonSpecGroup
+        {
+            int32 ChrSpecializationID = 0;
+            int32 SoulbindID = 0;
         };
 
         struct GarrisonInfo
@@ -181,6 +187,7 @@ namespace WorldPackets
             uint32 GarrSiteLevelID = 0;
             uint32 NumFollowerActivationsRemaining = 0;
             uint32 NumMissionsStartedToday = 0;   // might mean something else, but sending 0 here enables follower abilities "Increase success chance of the first mission of the day by %."
+            int32 MinAutoTroopLevel = 0;
             std::vector<GarrisonPlotInfo*> Plots;
             std::vector<GarrisonBuildingInfo const*> Buildings;
             std::vector<GarrisonFollower const*> Followers;
@@ -192,6 +199,7 @@ namespace WorldPackets
             std::vector<GarrisonTalent> Talents;
             std::vector<GarrisonCollection> Collections;
             std::vector<GarrisonEventList> EventLists;
+            std::vector<GarrisonSpecGroup> SpecGroups;
             std::vector<bool> CanStartMission;
             std::vector<int32> ArchivedMissions;
         };

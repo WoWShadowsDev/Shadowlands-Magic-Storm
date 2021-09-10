@@ -224,7 +224,7 @@ void BattlegroundWS::StartingEventOpenDoors()
     SpawnBGObject(BG_WS_OBJECT_DOOR_H_4, RESPAWN_ONE_DAY);
 
     // players joining later are not eligibles
-    StartCriteriaTimer(CRITERIA_TIMED_TYPE_EVENT, WS_EVENT_START_BATTLE);
+    StartCriteriaTimer(CriteriaStartEvent::SendEvent, WS_EVENT_START_BATTLE);
 }
 
 void BattlegroundWS::AddPlayer(Player* player)
@@ -474,7 +474,7 @@ void BattlegroundWS::EventPlayerClickedOnFlag(Player* player, GameObject* target
         UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
         UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 1);
         player->CastSpell(player, BG_WS_SPELL_SILVERWING_FLAG, true);
-        player->StartCriteriaTimer(CRITERIA_TIMED_TYPE_SPELL_TARGET, BG_WS_SPELL_SILVERWING_FLAG_PICKED);
+        player->StartCriteriaTimer(CriteriaStartEvent::BeSpellTarget, BG_WS_SPELL_SILVERWING_FLAG_PICKED);
         if (_flagState[1] == BG_WS_FLAG_STATE_ON_PLAYER)
           _bothFlagsKept = true;
     }
@@ -492,7 +492,7 @@ void BattlegroundWS::EventPlayerClickedOnFlag(Player* player, GameObject* target
         UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_ON_PLAYER);
         UpdateWorldState(BG_WS_FLAG_UNK_HORDE, 1);
         player->CastSpell(player, BG_WS_SPELL_WARSONG_FLAG, true);
-        player->StartCriteriaTimer(CRITERIA_TIMED_TYPE_SPELL_TARGET, BG_WS_SPELL_WARSONG_FLAG_PICKED);
+        player->StartCriteriaTimer(CriteriaStartEvent::BeSpellTarget, BG_WS_SPELL_WARSONG_FLAG_PICKED);
         if (_flagState[0] == BG_WS_FLAG_STATE_ON_PLAYER)
           _bothFlagsKept = true;
     }
@@ -780,10 +780,10 @@ bool BattlegroundWS::UpdatePlayerScore(Player* player, uint32 type, uint32 value
     switch (type)
     {
         case SCORE_FLAG_CAPTURES:                           // flags captured
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, WS_OBJECTIVE_CAPTURE_FLAG);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, WS_OBJECTIVE_CAPTURE_FLAG);
             break;
         case SCORE_FLAG_RETURNS:                            // flags returned
-            player->UpdateCriteria(CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE, WS_OBJECTIVE_RETURN_FLAG);
+            player->UpdateCriteria(CriteriaType::TrackedWorldStateUIModified, WS_OBJECTIVE_RETURN_FLAG);
             break;
         default:
             break;

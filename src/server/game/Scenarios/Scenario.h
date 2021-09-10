@@ -69,6 +69,7 @@ class TC_GAME_API Scenario : public CriteriaHandler
         ScenarioStepState GetStepState(ScenarioStepEntry const* step);
         ScenarioStepEntry const* GetStep() const { return _currentstep; }
         ScenarioStepEntry const* GetFirstStep() const;
+        ScenarioStepEntry const* GetLastStep() const;
 
         void SendScenarioState(Player* player);
         void SendBootPlayer(Player* player);
@@ -93,7 +94,7 @@ class TC_GAME_API Scenario : public CriteriaHandler
         std::vector<WorldPackets::Scenario::BonusObjectiveData> GetBonusObjectivesData();
         std::vector<WorldPackets::Achievement::CriteriaProgress> GetCriteriasProgress();
 
-        CriteriaList const& GetCriteriaByType(CriteriaTypes type, uint32 asset) const override;
+        CriteriaList const& GetCriteriaByType(CriteriaType type, uint32 asset) const override;
         ScenarioData const* _data;
 
     private:

@@ -261,13 +261,13 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
     static uint64 sendPacketCount = 0;
     static uint64 sendPacketBytes = 0;
 
-    static time_t firstTime = time(nullptr);
+    static time_t firstTime = GameTime::GetGameTime();
     static time_t lastTime = firstTime;                     // next 60 secs start time
 
     static uint64 sendLastPacketCount = 0;
     static uint64 sendLastPacketBytes = 0;
 
-    time_t cur_time = time(nullptr);
+    time_t cur_time = GameTime::GetGameTime();
 
     if ((cur_time - lastTime) < 60)
     {
@@ -336,7 +336,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     bool deletePacket = true;
     std::vector<WorldPacket*> requeuePackets;
     uint32 processedPackets = 0;
-    time_t currentTime = time(nullptr);
+    time_t currentTime = GameTime::GetGameTime();
 
     while (m_Socket[CONNECTION_TYPE_REALM] && _recvQueue.next(packet, updater))
     {
@@ -456,9 +456,8 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     //logout procedure should happen only in World::UpdateSessions() method!!!
     if (updater.ProcessUnsafe())
     {
-        time_t currTime = time(nullptr);
         ///- If necessary, log the player out
-        if (ShouldLogOut(currTime) && m_playerLoading.IsEmpty())
+        if (ShouldLogOut(currentTime) && m_playerLoading.IsEmpty())
             LogoutPlayer(true);
 
         if (m_Socket[CONNECTION_TYPE_REALM] && GetPlayer() && _warden)
@@ -509,7 +508,7 @@ void WorldSession::LogoutPlayer(bool save)
         ///- If the player just died before logging out, make him appear as a ghost
         if (_player->GetDeathTimer())
         {
-            _player->getHostileRefManager().deleteReferences();
+            _player->CombatStop();
             _player->BuildPlayerRepop();
             _player->RepopAtGraveyard();
         }
@@ -910,6 +909,11 @@ void WorldSession::ProcessQueryCallbacks()
 TransactionCallback& WorldSession::AddTransactionCallback(TransactionCallback&& callback)
 {
     return _transactionCallbacks.AddCallback(std::move(callback));
+}
+
+bool WorldSession::CanAccessAlliedRaces() const
+{
+    return GetAccountExpansion() >= EXPANSION_BATTLE_FOR_AZEROTH;
 }
 
 void WorldSession::InitWarden(SessionKey const& k)
