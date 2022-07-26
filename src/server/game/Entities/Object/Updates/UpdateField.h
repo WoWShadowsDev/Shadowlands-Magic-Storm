@@ -238,7 +238,7 @@ namespace UF
     private:
         void RemoveValue()
         {
-            if (_field.is_initialized())
+            if (_field.has_value())
                 _field.DestroyValue();
         }
 
@@ -329,7 +329,7 @@ namespace UF
             std::conditional_t<PublicSet, UpdateFieldPublicSetter<V>, UpdateFieldSetter<V>>>>>
             ModifyValue(OptionalUpdateField<V, BlockBit, Bit>(T::* field), uint32 /*dummy*/)
         {
-            if (!(_value.*field).is_initialized())
+            if (!(_value.*field).has_value())
                 (_value.*field).ConstructValue();
 
             _value._changesMask.Set(BlockBit);
@@ -433,7 +433,7 @@ namespace UF
             std::conditional_t<PublicSet, UpdateFieldPublicSetter<value_type>, UpdateFieldSetter<value_type>>>>>
             ModifyValue(uint32 /*dummy*/)
         {
-            if (!_value.is_initialized())
+            if (!_value.has_value())
                 _value.ConstructValue();
 
             return { *(_value._value) };
@@ -639,7 +639,7 @@ namespace UF
         template<typename T, uint32 BlockBit, uint32 Bit>
         void ClearChangesMask(OptionalUpdateField<T, BlockBit, Bit>& field, std::true_type)
         {
-            if (field.is_initialized())
+            if (field.has_value())
                 field._value->ClearChangesMask();
         }
 
@@ -726,7 +726,7 @@ namespace UF
     {
     };
 
-    template<typename T, std::size_t Size>
+    template<typename T, std::size_t Size_>
     class UpdateFieldArrayBase : public UpdateFieldArrayBaseWithoutSize<T>
     {
         template<typename F, bool PublicSet>
@@ -740,6 +740,7 @@ namespace UF
 
     public:
         using value_type = T;
+        static constexpr std::size_t Size = Size_;
 
         T const* begin() const
         {
@@ -751,12 +752,12 @@ namespace UF
             return std::end(_values);
         }
 
-        std::size_t size() const
+        constexpr std::size_t size() const
         {
             return Size;
         }
 
-        T const& operator[](uint32 index) const
+        T const& operator[](std::size_t index) const
         {
             return _values[index];
         }
@@ -905,7 +906,7 @@ namespace UF
             DestroyValue();
         }
 
-        bool is_initialized() const
+        bool has_value() const
         {
             return !!_value;
         }
