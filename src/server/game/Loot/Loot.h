@@ -30,6 +30,7 @@
 
 class Item;
 class LootStore;
+class Map;
 class Player;
 struct Loot;
 struct LootStoreItem;
@@ -93,15 +94,36 @@ enum LootType : uint8
     LOOT_PICKPOCKETING          = 2,
     LOOT_FISHING                = 3,
     LOOT_DISENCHANTING          = 4,
-                                                            // ignored always by client
+    LOOT_ITEM                   = 5,
     LOOT_SKINNING               = 6,
-    LOOT_PROSPECTING            = 7,
-    LOOT_MILLING                = 8,
+    LOOT_GATHERING_NODE         = 8,
+    LOOT_CHEST                  = 9,
+    LOOT_CORPSE_PERSONAL        = 14,
 
     LOOT_FISHINGHOLE            = 20,                       // unsupported by client, sending LOOT_FISHING instead
     LOOT_INSIGNIA               = 21,                       // unsupported by client, sending LOOT_CORPSE instead
-    LOOT_FISHING_JUNK           = 22                        // unsupported by client, sending LOOT_FISHING instead
+    LOOT_FISHING_JUNK           = 22,                       // unsupported by client, sending LOOT_FISHING instead
+    LOOT_PROSPECTING            = 23,
+    LOOT_MILLING                = 24,
 };
+
+constexpr LootType GetLootTypeForClient(LootType lootType)
+{
+    switch (lootType)
+    {
+        case LOOT_PROSPECTING:
+        case LOOT_MILLING:
+            return LOOT_DISENCHANTING;
+        case LOOT_INSIGNIA:
+            return LOOT_SKINNING;
+        case LOOT_FISHINGHOLE:
+        case LOOT_FISHING_JUNK:
+            return LOOT_FISHING;
+        default:
+            break;
+    }
+    return lootType;
+}
 
 enum LootError : uint8
 {
@@ -216,19 +238,14 @@ struct TC_GAME_API Loot
     uint32 gold;
     uint8 unlootedCount;
     ObjectGuid roundRobinPlayer;                            // GUID of the player having the Round-Robin ownership for the loot. If 0, round robin owner has released.
-    ObjectGuid lootOwnerGUID;
     LootType loot_type;                                     // required for achievement system
     uint8 maxDuplicates;                                    // Max amount of items with the same entry that can drop (default is 1; on 25 man raid mode 3)
 
-    // GUID of container that holds this loot (item_instance.entry)
-    //  Only set for inventory items that can be right-click looted
-    ObjectGuid containerID;
-
-    Loot(uint32 _gold = 0);
+    explicit Loot(Map* map, ObjectGuid owner, LootType type);
     ~Loot();
 
-    ObjectGuid const& GetGUID() const { return _GUID; }
-    void SetGUID(ObjectGuid const& guid) { _GUID = guid; }
+    ObjectGuid const& GetGUID() const { return _guid; }
+    ObjectGuid const& GetOwnerGUID() const { return _owner; }
 
     // if loot becomes invalid this reference is used to inform the listener
     void addLootValidatorRef(LootValidatorRef* pLootValidatorRef)
@@ -241,9 +258,9 @@ struct TC_GAME_API Loot
     bool empty() const { return items.empty() && gold == 0; }
     bool isLooted() const { return gold == 0 && unlootedCount == 0; }
 
-    void NotifyItemRemoved(uint8 lootIndex);
-    void NotifyQuestItemRemoved(uint8 questIndex);
-    void NotifyMoneyRemoved();
+    void NotifyItemRemoved(uint8 lootIndex, Map const* map);
+    void NotifyQuestItemRemoved(uint8 questIndex, Map const* map);
+    void NotifyMoneyRemoved(Map const* map);
     void AddLooter(ObjectGuid GUID) { PlayersLooting.insert(GUID); }
     void RemoveLooter(ObjectGuid GUID) { PlayersLooting.erase(GUID); }
 
@@ -251,7 +268,7 @@ struct TC_GAME_API Loot
     bool FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bool personal, bool noEmptyError = false, uint16 lootMode = LOOT_MODE_DEFAULT, ItemContext context = ItemContext::NONE);
 
     // Inserts the item into the loot (called by LootTemplate processors)
-    void AddItem(LootStoreItem const & item);
+    void AddItem(LootStoreItem const& item, Player const* player);
 
     LootItem const* GetItemInSlot(uint32 lootSlot) const;
     LootItem* LootItemInSlot(uint32 lootslot, Player* player, NotNormalLootItem** qitem = nullptr, NotNormalLootItem** ffaitem = nullptr, NotNormalLootItem** conditem = nullptr);
@@ -265,10 +282,10 @@ struct TC_GAME_API Loot
 
 private:
 
-    void FillNotNormalLootFor(Player* player, bool presentAtLooting);
-    NotNormalLootItemList* FillFFALoot(Player* player);
-    NotNormalLootItemList* FillQuestLoot(Player* player);
-    NotNormalLootItemList* FillNonQuestNonFFAConditionalLoot(Player* player, bool presentAtLooting);
+    void FillNotNormalLootFor(Player const* player, bool presentAtLooting);
+    NotNormalLootItemList* FillFFALoot(Player const* player);
+    NotNormalLootItemList* FillQuestLoot(Player const* player);
+    NotNormalLootItemList* FillNonQuestNonFFAConditionalLoot(Player const* player, bool presentAtLooting);
 
     GuidSet PlayersLooting;
     NotNormalLootItemMap PlayerQuestItems;
@@ -279,7 +296,8 @@ private:
     LootValidatorRefManager i_LootValidatorRefManager;
 
     // Loot GUID
-    ObjectGuid _GUID;
+    ObjectGuid _guid;
+    ObjectGuid _owner;                                              // The WorldObject that holds this loot
     ItemContext _itemContext;
 };
 
